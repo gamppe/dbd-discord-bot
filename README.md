@@ -19,7 +19,7 @@ Dead by Daylight의 **퍽·아이템·에드온·살인마** 정보를 한글·�
 ## 준비물
 
 - Python 3.11 이상
-- MySQL 8 (퍽·아이템·에드온 데이터를 저장해요)
+- MySQL 8 또는 MariaDB (퍽·아이템·에드온 데이터를 저장해요)
 - 디스코드 봇 토큰 ([개발자 포털](https://discord.com/developers/applications))
   - 포털의 **Bot → Message Content Intent**를 켜야 해요. 검색 채널과 퀴즈가 채팅 내용을 읽어요.
   - 서버에 초대할 때 `bot`, `applications.commands` 범위를 선택해요.
@@ -85,14 +85,32 @@ API가 알려주지 않는 부분은 `dbd/` 폴더의 JSON으로 직접 고쳐�
 
 한글 상태 효과 이름(탈진, 인내 등)은 `dbd/sync_perks.py`의 `KEYWORDS_KO`에서 고쳐요.
 
+## 서버에 설치해서 24시간 돌리기 (Ubuntu 24.04)
+
+`deploy/setup_server.sh` 하나로 서버 설정이 끝나요. 메모리 1GB짜리 작은 서버(무료 클라우드 서버 등)에서도 돌아가게 만들었어요.
+
+```bash
+scp deploy/setup_server.sh 서버:/tmp/
+ssh 서버 "sudo bash /tmp/setup_server.sh"
+```
+
+스크립트가 하는 일: 보안 업데이트 · 스왑 2GB · MariaDB 설치(저메모리 설정, 서버 안에서만 접속) · 봇 전용 리눅스 계정과 DB 계정 · 코드 설치 · 서비스와 **주간 데이터 갱신 타이머** 등록 · 첫 데이터 채우기
+
+- 비밀 정보는 서버의 `/etc/dbd-bot.env`(root만 읽기, 권한 600)에 만들어져요. DB 비밀번호는 서버에서 무작위로 만들어지고, **`DISCORD_TOKEN`만 직접 적어 넣으면** 돼요.
+- 그 뒤에 `sudo systemctl enable --now dbd-bot`으로 켜요. 서버를 재부팅해도 자동으로 다시 켜져요.
+- 로그는 `sudo journalctl -u dbd-bot -f`, 데이터를 지금 갱신하려면 `sudo systemctl start dbd-sync`예요.
+- 코드를 업데이트할 때: `cd /opt/dbd-bot && sudo -u dbdbot git pull && sudo systemctl restart dbd-bot`
+
 ## 구조
 
 ```
 bot.py              디스코드 봇 (검색 채널, 주간 신전, 랜덤 버튼, 퀴즈)
 dbd/
-  schema.sql        MySQL 테이블
+  schema.sql        MySQL/MariaDB 테이블
   queries.py        봇이 쓰는 DB 조회 (검색, 랜덤 빌드 등)
   sync_perks.py     퍽 동기화 (끝나면 sync_gear.py도 이어서 실행)
   sync_gear.py      살인마·아이템·에드온 동기화
   *.json            데이터 보정 파일
+deploy/
+  setup_server.sh   서버 설치 스크립트 (서비스·타이머 등록 포함)
 ```

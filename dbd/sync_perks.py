@@ -114,11 +114,19 @@ def fetch_wiki_image_urls(perks_en):
             break
         params.update(data["continue"])
 
+    # 게임 아이콘 이름에 T_UI_ 접두사가 붙거나 기호·대소문자가 달라도 맞출 수 있게, 정규화한 이름으로도 찾는다.
+    norm = lambda s: re.sub(r"[^a-z0-9]", "", re.sub(r"^t_ui_|^t_", "", s.rsplit(".", 1)[0].lower()))
+    by_norm = {}
+    for name, url in files.items():
+        by_norm.setdefault(norm(name), url)
+
     out = {}
     for pid, p in perks_en.items():
         base = (p.get("image") or "").rsplit("/", 1)[-1]
         if f"{base}.png".lower() in files:
             out[pid] = files[f"{base}.png".lower()]
+        elif base and norm(base) in by_norm:
+            out[pid] = by_norm[norm(base)]
 
     todo = [(pid, p["name"]) for pid, p in perks_en.items() if pid not in out]
     for i in range(0, len(todo), 50):
